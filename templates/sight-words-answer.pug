@@ -1,0 +1,30 @@
+p
+  if correct
+    s
+      | That is correct!
+    s
+      | The word
+      |
+      +slow #{word}
+      |
+      | is the correct answer!
+  else
+    s
+      | Sorry, the word
+      |
+      +slow #{answer}
+      |
+      | is not the correct answer.
+    s
+      | The correct answer is
+      |
+      +slow #{word}.
+      |
+    s
+      +slow #{word}
+      |
+      | is spelled
+      |
+      +characters #{word}
+      | .
+      |

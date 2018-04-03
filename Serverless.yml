@@ -1,0 +1,37 @@
+service: alexa-reading
+
+provider:
+  name: aws
+  versionFunctions: false
+  runtime: nodejs6.10
+  profile: serverless-user
+  stage: beta
+  deploymentBucket: madziki-serverless
+  memorySize: 256
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+       - dynamodb:Query
+       - dynamodb:Scan
+       - dynamodb:GetItem
+       - dynamodb:PutItem
+       - dynamodb:UpdateItem
+       - dynamodb:DeleteItem
+      Resource: arn:aws:dynamodb:us-east-1:553670172214:table/alexa-reading
+
+functions:
+  skill:
+    handler: index.handler
+    events:
+      - alexaSkill
+
+package:
+  exclude:
+    - .gitignore
+    - .servlerless
+    - ./*.yml
+    - ./templates
+    - ./images
+    - ./test
+    - ./package.json
+    - ./Makefile

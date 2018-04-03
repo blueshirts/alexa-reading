@@ -1,0 +1,30 @@
+{
+  "name": "alexa-reading",
+  "version": "1.0.0",
+  "description": "An Alexa skill that teaches reading.",
+  "main": "index.js",
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/blueshirts/alexa-reading.git"
+  },
+  "keywords": [
+    "alexa",
+    "reading",
+    "sight",
+    "words"
+  ],
+  "author": "Anthony Milano",
+  "license": "UNLICENSED",
+  "bugs": {},
+  "dependencies": {
+    "alexa-sdk": "^1.0.x",
+    "underscore": "^1.8.3"
+  },
+  "devDependencies": {
+    "chai": "^4.1.x",
+    "mocha": "^4.0.x",
+    "pug-ssml": "^0.0.16",
+    "pug-ssml-cli": "^0.0.13"
+  }
+}
