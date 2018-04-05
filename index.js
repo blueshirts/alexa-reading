@@ -1,7 +1,7 @@
 'use strict'
 
 const assert = require('assert')
-const _ = require('underscore')
+// const _ = require('underscore')
 const Alexa = require('alexa-sdk')
 const makeImage = Alexa.utils.ImageUtils.makeImage
 const textUtils = Alexa.utils.TextUtils
@@ -13,12 +13,16 @@ const resources = require('./resources')
 
 const DEFAULT_TITLE = 'Learn to Read'
 
+const states = {
+  SIGHT_WORDS: 'sight-words',
+  SIGHT_WORDS_NEXT: 'sight-words-next'
+}
+
 /**
  * ---------- Common Handlers ----------
  */
 
 const newSession = function () {
-  console.log(`Invoking new session: ${this.handler.state}`)
   this.handler.state = ''
   delete this.attributes.STATE
   this.emit('LaunchRequest')
@@ -90,7 +94,7 @@ const getSkill = function () {
   const skillSlot = helpers.slot(this, 'skill')
 
   if (skillSlot.value === 'sight words') {
-    sightWordsQuestion.call(this)
+    sightWordsNext.call(this)
   } else {
     const speech = templates.unknown_skill({skill: skillSlot.value})
     this.response.speak(speech).listen(speech)
@@ -98,7 +102,31 @@ const getSkill = function () {
   }
 }
 
-const sightWordsQuestion = function (answerSpeech) {
+const reset = function() {
+  const skillSlot = helpers.slot(this, 'skill')
+
+  if (skillSlot.value === 'sight words') {
+    delete this.attributes.sightWords
+  }
+
+  const speech = templates.reset({
+    skill: skillSlot.value
+  })
+
+  this.response.speak(speech)
+  this.emit(':responseReady')
+}
+
+/**
+ * The handlers.
+ */
+const defaultHandlers = {
+  'LaunchRequest': launch,
+  'GetSkill': getSkill,
+  'Reset': reset
+}
+
+const sightWordsNext = function() {
   const hasDisplay = helpers.supportsDisplay(this)
   const speech = templates.sight_word_question()
 
@@ -135,61 +163,96 @@ const sightWordsQuestion = function (answerSpeech) {
     hintSpeech = templates.hint({ hint: hint })
   }
   this.handler.state = 'sight-words'
-  this.response.speak((answerSpeech ? answerSpeech : ' ') + speech).listen(hintSpeech ? hintSpeech : speech)
+  this.response.speak(speech).listen(hintSpeech ? hintSpeech : speech)
   this.emit(':responseReady')
 }
 
 const sightWordsAnswer = function () {
-  const words = this.attributes.sightWords.words
+  // const words = this.attributes.sightWords.words
   const word = this.attributes.sightWords.word
   assert(word)
 
   const answerSlot = helpers.slot(this, 'word')
   assert(answerSlot)
 
-  console.log(`The user responded with: ${answerSlot.value}`)
-
   const isCorrect = resources.isAcceptable(word, answerSlot.value)
+
+  console.log(`The user supplied answer: ${answerSlot.value}`)
+  console.log(`The answer is: ${word}`)
+  console.log(`The answer is correct: ${isCorrect}`)
+
   const context = {
     answer: answerSlot.value,
     word: word,
     correct: isCorrect
   }
+  //
+  // if (isCorrect) {
+  //   this.attributes.sightWords.words = _.without(words, word)
+  // }
 
-  if (isCorrect) {
-    this.attributes.sightWords.words = _.without(words, word)
-  }
+  // TODO: Display a congrats or X image based on the answer.
+  // TODO: Display a congrats or X sound based on the answer.
+  // TODO: Give the user a verbal congrats or X based on the answer.
+  // TODO: Redisplay the word to the user.
+  // TODO: Tell the user to say next to continue.
+  // TODO: Add a specific unhandled instruction to the next handler.
+  // const hasDisplay = helpers.supportsDisplay(this)
+  // if (hasDisplay) {
+  //   this.response.renderTemplate(getDisplayTemplate({
+  //     primary: templates.sight_words_answer_display(context)
+  //   }))
+  // }
 
-  sightWordsQuestion.call(this, templates.sight_words_answer(context))
-}
-
-const sightWordsHandlers = {
-  'SightWordsAnswer': sightWordsAnswer
-}
-
-const reset = function() {
-  const skillSlot = helpers.slot(this, 'skill')
-
-  if (skillSlot.value === 'sight words') {
-    delete this.attributes.sightWords
-  }
-
-  const speech = templates.reset({
-    skill: skillSlot.value
-  })
-
-  this.response.speak(speech)
+  this.handler.state = states.SIGHT_WORDS_NEXT
+  const speech = templates.sight_words_answer(context)
+  console.log(speech)
+  this.response.speak(speech).listen(templates.next())
   this.emit(':responseReady')
 }
 
-/**
- * The handlers.
- */
-const defaultHandlers = {
-  'LaunchRequest': launch,
-  'GetSkill': getSkill,
-  'Reset': reset
+const dontKnow = function() {
+  const hasDisplay = helpers.supportsDisplay(this)
+  const word = this.attributes.sightWords.word
+  assert(word)
+
+  const context = {
+    word: word
+  }
+
+  if (hasDisplay) {
+    this.response.renderTemplate(getDisplayTemplate({
+      primary: templates.dont_know_display(context)
+    }))
+  }
+  this.handler.state = states.SIGHT_WORDS_NEXT
+  this.response.speak(templates.dont_know(context))
+  this.emit(':responseReady')
 }
+
+const nextUnhandled = function() {
+  const hasDisplay = helpers.supportsDisplay(this)
+
+  if (hasDisplay) {
+    this.response.renderTemplate(getDisplayTemplate({
+      primary: templates.next_display()
+    }))
+  }
+  this.handler.state = states.SIGHT_WORDS_NEXT
+  this.response.speak(templates.next())
+  this.emit(':responseReady')
+}
+
+const sightWordsHandlers = {
+  'SightWordsAnswer': sightWordsAnswer,
+  'DontKnow': dontKnow
+}
+
+const sightWordsNextHandlers = {
+  'Unhandled': nextUnhandled,
+  'NextSightWord': sightWordsNext
+}
+
 
 //
 // Utils.
@@ -257,6 +320,10 @@ module.exports.handler = function (event, context, callback) {
   const alexa = Alexa.handler(event, context, callback)
   alexa.appId = 'amzn1.ask.skill.e095a6af-12cd-4398-b46e-07ab3410d96f'
   alexa.dynamoDBTableName = 'alexa-reading'
-  alexa.registerHandlers(createHandler(defaultHandlers), createStateHandler('sight-words', sightWordsHandlers))
+  alexa.registerHandlers(
+    createHandler(defaultHandlers),
+    createStateHandler(states.SIGHT_WORDS, sightWordsHandlers),
+    createStateHandler(states.SIGHT_WORDS_NEXT, sightWordsNextHandlers)
+  )
   alexa.execute()
 }

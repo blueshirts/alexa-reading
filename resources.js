@@ -1,45 +1,12 @@
-const level1Words = [
-  'a',
-  'and',
-  'away',
-  'big',
-  'blue',
-  'can',
-  'come',
-  'down',
-  'find',
-  'for',
-  'funny',
-  'go',
-  'help',
-  'here',
-  'I',
-  'in',
-  'is',
-  'it',
-  'jump',
-  'little',
-  'look',
-  'make',
-  'me',
-  'my',
-  'not',
-  'one',
-  'play',
-  'red',
-  'run',
-  'said',
-  'see',
-  'the',
-  'three',
-  'to',
-  'two',
-  'up',
-  'we',
-  'where',
-  'yellow',
-  'you'
-]
+const assert = require('assert')
+
+const level1Words = `
+  a, about, all, an, and, are, as, at, be, been, but, by, called, can, come, could, day, did, do, down, each, find, 
+  first, for, from, get, go, had, has, have, he, her, him, his, how, I, if, in, into, is, it, like, long, look, made, 
+  make, many, may, more, my, no, not, now, number, of, oil, on, one, or, other, out, part, people, said, see, she, sit,
+  so, some, than, that, the, their, them, then, there, these, they, this, time, to, two, up, use, was, water, way, we, 
+  were, what, when, which, who, will, with, words, would, write, you, your
+`.split(",").map(item => item.trim())
 
 const hints = {
   'a': 'I think you know this one it\'s the first letter of the alphabet.',
@@ -51,20 +18,29 @@ const hints = {
   'go': 'The opposite of stay is to what?',
   'help': 'Friends do what for each other?',
   'I': "This word is not an L.",
-  'in': 'This word is not out but what?'
+  'in': 'This word is not out but what?',
+  'three': 'This word is a number and it comes after two.'
 }
 
-const TO_ANSWERS = ['to', 'too', 'two']
-const FOR_ANSWERS = ['for', 'four']
-const acceptableAnswers = new Map([
-  ['to', TO_ANSWERS],
-  ['too', TO_ANSWERS],
-  ['two', TO_ANSWERS],
-  ['four', FOR_ANSWERS],
-  ['for', FOR_ANSWERS]
-])
+const acceptableAnswers = new Map()
 
-const isAcceptable = function(word, answer) {
+const addAcceptableAnswers = function(a) {
+  assert(a)
+  assert(Array.isArray(a))
+
+  for (let item of a) {
+    acceptableAnswers.set(item, a)
+  }
+}
+
+addAcceptableAnswers(['one, 1'])
+addAcceptableAnswers(['to', 'too', 'two', '2'])
+addAcceptableAnswers(['for', 'four', '4'])
+addAcceptableAnswers(['there', 'they\'re', 'their'])
+addAcceptableAnswers(['three', '3'])
+addAcceptableAnswers(['right', 'write'])
+
+const isAcceptable = function (word, answer) {
   if (word === answer) {
     return true
   } else {
