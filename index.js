@@ -80,8 +80,11 @@ const launch = function () {
 
   this.response.speak(speech).listen(speech)
   if (hasDisplay) {
-    this.response.renderTemplate(getDisplayTemplate({
-      primary: templates.welcome_display()
+    const listItemBuilder = new Alexa.templateBuilders.ListItemBuilder()
+    listItemBuilder.addItem(resources.sightWordsImage, 'sight-words', textUtils.makePlainText('Sight Words'))
+    this.response.renderTemplate(getOptionTemplate({
+      title: 'Welcome to Alexa Reading',
+      listItems: listItemBuilder.build()
     }))
   }
   this.emit(':responseReady')
@@ -93,13 +96,17 @@ const launch = function () {
 const getSkill = function () {
   const skillSlot = helpers.slot(this, 'skill')
 
-  if (skillSlot.value === 'sight words') {
+  if (this.event.request.token === 'sight-words' || skillSlot.value === 'sight words') {
     sightWordsNext.call(this)
   } else {
     const speech = templates.unknown_skill({skill: skillSlot.value})
     this.response.speak(speech).listen(speech)
     this.emit(':responseReady')
   }
+}
+
+const elementSelected = function() {
+  getSkill.call(this)
 }
 
 const reset = function() {
@@ -123,7 +130,14 @@ const reset = function() {
 const defaultHandlers = {
   'LaunchRequest': launch,
   'GetSkill': getSkill,
+  'ElementSelected': elementSelected,
   'Reset': reset
+}
+
+const sightWordsUnhandled = function() {
+  this.handler.state = states.SIGHT_WORDS
+  this.response.speak(templates.sight_words_unhandled()).listen(templates.sight_words_unhandled())
+  this.emit(':responseReady')
 }
 
 const sightWordsNext = function() {
@@ -168,7 +182,6 @@ const sightWordsNext = function() {
 }
 
 const sightWordsAnswer = function () {
-  // const words = this.attributes.sightWords.words
   const word = this.attributes.sightWords.word
   assert(word)
 
@@ -177,36 +190,27 @@ const sightWordsAnswer = function () {
 
   const isCorrect = resources.isAcceptable(word, answerSlot.value)
 
-  console.log(`The user supplied answer: ${answerSlot.value}`)
-  console.log(`The answer is: ${word}`)
-  console.log(`The answer is correct: ${isCorrect}`)
-
   const context = {
     answer: answerSlot.value,
     word: word,
-    correct: isCorrect
+    correct: isCorrect,
+    congrats: congrats()
   }
-  //
-  // if (isCorrect) {
-  //   this.attributes.sightWords.words = _.without(words, word)
-  // }
 
-  // TODO: Display a congrats or X image based on the answer.
-  // TODO: Display a congrats or X sound based on the answer.
-  // TODO: Give the user a verbal congrats or X based on the answer.
-  // TODO: Redisplay the word to the user.
-  // TODO: Tell the user to say next to continue.
-  // TODO: Add a specific unhandled instruction to the next handler.
-  // const hasDisplay = helpers.supportsDisplay(this)
-  // if (hasDisplay) {
-  //   this.response.renderTemplate(getDisplayTemplate({
-  //     primary: templates.sight_words_answer_display(context)
-  //   }))
-  // }
+  if (!isCorrect) {
+    console.log(`Correct answer: ${word}, users answer: ${answerSlot.value}`)
+  }
+
+  const hasDisplay = helpers.supportsDisplay(this)
+  if (hasDisplay) {
+    this.response.renderTemplate(getAnswerTemplate({
+      word: word,
+      isCorrect: isCorrect
+    }))
+  }
 
   this.handler.state = states.SIGHT_WORDS_NEXT
   const speech = templates.sight_words_answer(context)
-  console.log(speech)
   this.response.speak(speech).listen(templates.next())
   this.emit(':responseReady')
 }
@@ -226,30 +230,32 @@ const dontKnow = function() {
     }))
   }
   this.handler.state = states.SIGHT_WORDS_NEXT
-  this.response.speak(templates.dont_know(context))
+  this.response.speak(templates.dont_know(context)).listen(templates.next())
   this.emit(':responseReady')
 }
 
 const nextUnhandled = function() {
-  const hasDisplay = helpers.supportsDisplay(this)
-
-  if (hasDisplay) {
-    this.response.renderTemplate(getDisplayTemplate({
-      primary: templates.next_display()
-    }))
-  }
   this.handler.state = states.SIGHT_WORDS_NEXT
-  this.response.speak(templates.next())
+  this.response.speak(templates.next_unhandled()).listen(templates.next_unhandled())
   this.emit(':responseReady')
 }
 
 const sightWordsHandlers = {
+  'NewSession': newSession,
+  'Unhandled': sightWordsUnhandled,
+  'AMAZON.HelpIntent': help,
+  'AMAZON.CancelIntent': cancel,
+  'AMAZON.StopIntent': cancel,
   'SightWordsAnswer': sightWordsAnswer,
   'DontKnow': dontKnow
 }
 
 const sightWordsNextHandlers = {
+  'NewSession': newSession,
   'Unhandled': nextUnhandled,
+  'AMAZON.HelpIntent': help,
+  'AMAZON.CancelIntent': cancel,
+  'AMAZON.StopIntent': cancel,
   'NextSightWord': sightWordsNext
 }
 
@@ -258,17 +264,48 @@ const sightWordsNextHandlers = {
 // Utils.
 //
 
+const getOptionTemplate = function(params = {}) {
+  const builder = new Alexa.templateBuilders.ListTemplate2Builder();
+  if (params.title) {
+    builder.setTitle(params.title)
+  }
+  if (params.token) {
+    builder.setToken(params.token)
+  }
+  if (params.listItems) {
+    builder.setListItems(params.listItems)
+  }
+  return builder.build()
+}
+
 const getDisplayTemplate = function (params = {}) {
   const builder = new Alexa.templateBuilders.BodyTemplate1Builder()
   const primaryRichText = params.primary ? textUtils.makeRichText(params.primary) : undefined
-  // const secondaryRichText = params.secondary ? textUtils.makeRichText(params.secondary) : undefined
-  // const tertiaryRichText = params.tertiary ? textUtils.makeRichText(params.tertiary) : undefined
   builder.setTitle(params.title ? params.title : DEFAULT_TITLE)
   builder.setBackButtonBehavior('HIDDEN')
   builder.setTextContent(primaryRichText, null, null)
   if (params.background) {
     builder.setBackgroundImage(makeImage(params.background))
   }
+  return builder.build()
+}
+
+const getAnswerTemplate = function(params = {}) {
+  assert(params)
+  assert(params.word)
+
+  const builder = new Alexa.templateBuilders.BodyTemplate2Builder()
+  builder.setTitle(params.word)
+  builder.setBackButtonBehavior('HIDDEN')
+  builder.setTitle(DEFAULT_TITLE)
+  builder.setTextContent(textUtils.makeRichText(templates.sight_word_question_display({word: params.word})),
+    null, textUtils.makePlainText('Say "next" to continue.'))
+  if (params.isCorrect === true) {
+    builder.setImage(resources.hoorayImage)
+  } else {
+    builder.setImage(resources.sadImage)
+  }
+
   return builder.build()
 }
 
@@ -288,21 +325,28 @@ const commonHandlers = {
 }
 
 function extend(o = {}, includeNewSession = true) {
+  const result = {}
+
+  for (let k of Object.keys(o)) {
+    result[k] = o[k]
+  }
+
   for (let k of Object.keys(commonHandlers)) {
     if (includeNewSession === false && k === 'NewSession') {
       continue
     }
 
     if (!o[k]) {
-      o[k] = commonHandlers[k]
+      result[k] = commonHandlers[k]
     }
   }
-  return o
+
+  return result
 }
 
-function createStateHandler(state, handlers) {
-  return Alexa.CreateStateHandler(state, extend(handlers))
-}
+// function createStateHandler(state, handlers) {
+//   return Alexa.CreateStateHandler(state, extend(handlers))
+// }
 
 function createHandler(handlers) {
   return extend(handlers, false)
@@ -311,6 +355,16 @@ function createHandler(handlers) {
 function random(max) {
   assert(max)
   return Math.floor(Math.random() * max)
+}
+
+const interjections = [
+  'booya', 'dynomite', 'kapow', 'spoiler alert', 'woo hoo'
+]
+
+function congrats() {
+  const i = random(interjections.length)
+  const b = interjections[i]
+  return `${b}!`
 }
 
 /**
@@ -322,8 +376,8 @@ module.exports.handler = function (event, context, callback) {
   alexa.dynamoDBTableName = 'alexa-reading'
   alexa.registerHandlers(
     createHandler(defaultHandlers),
-    createStateHandler(states.SIGHT_WORDS, sightWordsHandlers),
-    createStateHandler(states.SIGHT_WORDS_NEXT, sightWordsNextHandlers)
+    Alexa.CreateStateHandler(states.SIGHT_WORDS, sightWordsHandlers),
+    Alexa.CreateStateHandler(states.SIGHT_WORDS_NEXT, sightWordsNextHandlers)
   )
   alexa.execute()
 }

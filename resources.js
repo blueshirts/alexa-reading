@@ -1,4 +1,12 @@
 const assert = require('assert')
+const Alexa = require('alexa-sdk')
+const makeImage = Alexa.utils.ImageUtils.makeImage
+
+const sightWordsImage =  makeImage('https://s3.amazonaws.com/madziki.com/reading/sight-words-280-280.png', 280, 280)
+
+const hoorayImage = makeImage('https://s3.amazonaws.com/madziki.com/reading/hooray-340-340.png')
+
+const sadImage = makeImage('https://s3.amazonaws.com/madziki.com/reading/sad.png')
 
 const level1Words = `
   a, about, all, an, and, are, as, at, be, been, but, by, called, can, come, could, day, did, do, down, each, find, 
@@ -34,11 +42,15 @@ const addAcceptableAnswers = function(a) {
 }
 
 addAcceptableAnswers(['one, 1'])
+addAcceptableAnswers(['been', 'ben'])
+addAcceptableAnswers(['first', '1st'])
 addAcceptableAnswers(['to', 'too', 'two', '2'])
 addAcceptableAnswers(['for', 'four', '4'])
+addAcceptableAnswers(['hi', 'i'])
 addAcceptableAnswers(['there', 'they\'re', 'their'])
 addAcceptableAnswers(['three', '3'])
 addAcceptableAnswers(['right', 'write'])
+addAcceptableAnswers(['you\'re', 'your'])
 
 const isAcceptable = function (word, answer) {
   if (word === answer) {
@@ -52,3 +64,6 @@ exports.level1Words = level1Words
 exports.words = [level1Words]
 exports.hints = hints
 exports.isAcceptable = isAcceptable
+exports.sightWordsImage = sightWordsImage
+exports.hoorayImage = hoorayImage
+exports.sadImage = sadImage

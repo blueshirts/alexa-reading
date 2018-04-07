@@ -1,11 +1,14 @@
 if correct
   audio(src="https://s3.amazonaws.com/madziki.com/audio/cheer.mp3")
   s
+    | #{congrats}
+  s
     | That is correct!
   s
     | The word
     |
-    +slow #{word}
+    +slow
+      +strong #{word}
     |
     | is the correct answer!
 
@@ -14,16 +17,19 @@ else
   s
     | Sorry, the word
     |
-    +slow #{answer}
+    +slow
+      +strong #{answer}
   |
   | is not the correct answer.
   s
     | The correct answer is
     |
-    +slow #{word}.
+    +slow
+      +strong #{word}.
     |
   s
-    +slow #{word}
+    +slow
+      +strong #{word}
     |
     | is spelled
     |
