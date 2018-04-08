@@ -11,7 +11,7 @@ const helpers = require('./helpers')
 const resources = require('./resources')
 // const images = require('./images')
 
-const DEFAULT_TITLE = 'Learn to Read'
+const DEFAULT_TITLE = 'Alexa Reading Skills'
 
 const states = {
   SIGHT_WORDS: 'sight-words',
@@ -146,22 +146,20 @@ const sightWordsNext = function() {
 
   let words, word, hint
 
-  if (!this.attributes.sightWords || this.attributes.sightWords.words.length === 0) {
+  if (!this.attributes.sightWords || this.attributes.sightWords.length === 0) {
     words = resources.words[0]
     word = words[random(words.length)]
     hint = resources.hints[word]
 
-    this.attributes.sightWords = {
-      level: 0,
-      word: word,
-      words: words
-    }
+    this.attributes.sightWords = words
+    this.attributes.sightWordsAnswer = word
   } else {
-    words = this.attributes.sightWords.words
+    words = this.attributes.sightWords
     word = words[random(words.length)]
     hint = resources.hints[word]
 
-    this.attributes.sightWords.word = word
+
+    this.attributes.sightWordsAnswer = word
   }
 
   if (hasDisplay) {
@@ -178,11 +176,12 @@ const sightWordsNext = function() {
   }
   this.handler.state = 'sight-words'
   this.response.speak(speech).listen(hintSpeech ? hintSpeech : speech)
+
   this.emit(':responseReady')
 }
 
 const sightWordsAnswer = function () {
-  const word = this.attributes.sightWords.word
+  const word = this.attributes.sightWordsAnswer
   assert(word)
 
   const answerSlot = helpers.slot(this, 'word')
@@ -197,7 +196,12 @@ const sightWordsAnswer = function () {
     congrats: congrats()
   }
 
-  if (!isCorrect) {
+  if (isCorrect) {
+    // Remove the word since the user got it correct.
+    this.attributes.sightWordsAnswer = ''
+    const words = this.attributes.sightWords
+    this.attributes.sightWords = words.splice(words.indexOf(word), 1)
+  } else {
     console.log(`Correct answer: ${word}, users answer: ${answerSlot.value}`)
   }
 
@@ -212,12 +216,13 @@ const sightWordsAnswer = function () {
   this.handler.state = states.SIGHT_WORDS_NEXT
   const speech = templates.sight_words_answer(context)
   this.response.speak(speech).listen(templates.next())
+
   this.emit(':responseReady')
 }
 
 const dontKnow = function() {
   const hasDisplay = helpers.supportsDisplay(this)
-  const word = this.attributes.sightWords.word
+  const word = this.attributes.sightWordsAnswer
   assert(word)
 
   const context = {
@@ -247,6 +252,7 @@ const sightWordsHandlers = {
   'AMAZON.CancelIntent': cancel,
   'AMAZON.StopIntent': cancel,
   'SightWordsAnswer': sightWordsAnswer,
+  'NextSightWord': sightWordsNext,
   'DontKnow': dontKnow
 }
 
